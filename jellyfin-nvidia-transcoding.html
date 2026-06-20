@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- SEO META -->
+<title>How to Set Up Jellyfin NVIDIA GPU Transcoding (GTX 1070, Fix AV1 Errors) — HomeLab Guides</title>
+<meta name="description" content="GTX 1070 can't encode AV1 — here's how to disable it in Jellyfin and get NVENC working for 4K HEVC transcoding. Includes MakeMKV Blu-ray ripping and ASUS drive firmware flash.">
+<meta name="keywords" content="jellyfin nvidia transcoding, jellyfin gtx 1070, jellyfin av1 error fix, nvenc jellyfin setup, makemkv 4k uhd, jellyfin hevc transcoding, jellyfin gpu acceleration">
+<link rel="canonical" href="https://homelabguides.com/jellyfin-nvidia-transcoding.html">
+
+<!-- Structured Data (Article schema for Google) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "How to Set Up Jellyfin with NVIDIA GPU Transcoding (GTX 1070 / No AV1)",
+  "description": "GTX 1070 can't encode AV1 — here's how to disable it in Jellyfin and get NVENC working for 4K HEVC transcoding.",
+  "datePublished": "2026-06-01",
+  "dateModified": "2026-06-20",
+  "author": { "@type": "Person", "name": "HomeLab Guides" },
+  "publisher": { "@type": "Organization", "name": "HomeLab Guides" }
+}
+</script>
+
+<!-- Open Graph -->
+<meta property="og:title" content="Jellyfin NVIDIA Transcoding: Fix AV1 Errors on GTX 1070">
+<meta property="og:description" content="Step-by-step guide to enabling NVENC in Jellyfin and disabling AV1 for older NVIDIA cards.">
+<meta property="og:type" content="article">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg:        #0b0f14;
+    --surface:   #131820;
+    --surface2:  #1a2030;
+    --border:    #1e2736;
+    --accent:    #4f9eff;
+    --accent-dim:#1a3a6b;
+    --green:     #3dd68c;
+    --orange:    #f0883e;
+    --red:       #f47067;
+    --muted:     #6b7a99;
+    --text:      #dce5f5;
+    --text-dim:  #a8b5d1;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'Space Grotesk', sans-serif;
+    --serif:     'Lora', Georgia, serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-dim);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── NAV ── */
+  nav {
+    border-bottom: 1px solid var(--border);
+    padding: 0 clamp(1.25rem, 5vw, 4rem);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    background: rgba(11,15,20,0.95);
+    backdrop-filter: blur(10px);
+    z-index: 100;
+  }
+
+  .nav-logo {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-logo .logo-mark {
+    width: 26px; height: 26px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+
+  .nav-back {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .nav-back:hover { color: var(--text); text-decoration: none; }
+
+  /* ── LAYOUT ── */
+  .page-wrap {
+    display: grid;
+    grid-template-columns: 1fr min(680px, 100%) 220px;
+    gap: 0;
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    align-items: start;
+  }
+
+  /* ── ARTICLE ── */
+  .article-col {
+    grid-column: 2;
+    padding: 3rem 2rem;
+  }
+
+  /* ── TOC SIDEBAR ── */
+  .toc-col {
+    grid-column: 3;
+    padding: 3rem 0 3rem 1.5rem;
+    position: sticky;
+    top: 72px;
+  }
+
+  .toc-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .toc-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-left: 1px solid var(--border);
+    padding-left: 1rem;
+  }
+
+  .toc-list a {
+    font-size: 12.5px;
+    color: var(--muted);
+    display: block;
+    padding: 3px 0;
+    transition: color 0.15s;
+    text-decoration: none;
+    line-height: 1.4;
+  }
+
+  .toc-list a:hover { color: var(--text); }
+  .toc-list a.active { color: var(--accent); }
+
+  /* ── ARTICLE HEADER ── */
+  .article-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .article-eyebrow::before {
+    content: '';
+    display: block;
+    width: 20px; height: 1px;
+    background: var(--accent);
+  }
+
+  .article-title {
+    font-family: var(--sans);
+    font-size: clamp(1.6rem, 4vw, 2.25rem);
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+  }
+
+  .article-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+
+  .meta-item {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--surface2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+
+  /* ── PROSE ── */
+  .prose { }
+
+  .prose p {
+    font-size: 15.5px;
+    line-height: 1.8;
+    color: var(--text-dim);
+    margin-bottom: 1.25rem;
+  }
+
+  .prose h2 {
+    font-family: var(--sans);
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 2.75rem 0 0.85rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    letter-spacing: -0.01em;
+  }
+
+  .prose h3 {
+    font-family: var(--sans);
+    font-size: 15.5px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 1.75rem 0 0.5rem;
+  }
+
+  .prose ul, .prose ol {
+    padding-left: 1.5rem;
+    margin-bottom: 1.25rem;
+    color: var(--text-dim);
+    font-size: 15px;
+    line-height: 1.8;
+  }
+
+  .prose li { margin-bottom: 0.3rem; }
+
+  .prose strong { color: var(--text); font-weight: 600; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: rgba(79,158,255,0.1);
+    color: #79c0ff;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  .code-block {
+    background: #060a10;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.1rem 1.25rem;
+    margin: 1rem 0 1.25rem;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: #c9d1d9;
+    overflow-x: auto;
+    line-height: 1.65;
+  }
+
+  .code-block .comment { color: #484f58; }
+  .code-block .g { color: var(--green); }
+  .code-block .b { color: #79c0ff; }
+  .code-block .o { color: var(--orange); }
+
+  /* CALLOUTS */
+  .callout {
+    border-radius: 7px;
+    padding: 0.9rem 1.1rem;
+    margin: 1.25rem 0;
+    display: flex;
+    gap: 0.75rem;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .callout.warn {
+    background: rgba(240,136,62,0.08);
+    border: 1px solid rgba(240,136,62,0.25);
+    color: #f0a661;
+  }
+
+  .callout.info {
+    background: rgba(79,158,255,0.07);
+    border: 1px solid rgba(79,158,255,0.2);
+    color: #79c0ff;
+  }
+
+  .callout.success {
+    background: rgba(61,214,140,0.07);
+    border: 1px solid rgba(61,214,140,0.2);
+    color: #3dd68c;
+  }
+
+  .callout.error {
+    background: rgba(244,112,103,0.07);
+    border: 1px solid rgba(244,112,103,0.2);
+    color: #f47067;
+  }
+
+  .callout-icon { flex-shrink: 0; }
+
+  /* SPEC TABLE */
+  .spec-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0 1.25rem;
+    font-size: 13.5px;
+  }
+
+  .spec-table th {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    font-weight: 500;
+  }
+
+  .spec-table td {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid rgba(30,39,54,0.7);
+    color: var(--text-dim);
+    vertical-align: middle;
+  }
+
+  .spec-table tr:last-child td { border-bottom: none; }
+  .spec-table tr:hover td { background: var(--surface2); }
+
+  .check { color: var(--green); }
+  .cross { color: var(--red); }
+
+  /* STEPS */
+  .steps { display: flex; flex-direction: column; gap: 0; margin: 1rem 0; }
+
+  .step { display: flex; gap: 1rem; }
+
+  .step-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 30px;
+  }
+
+  .step-num {
+    width: 30px; height: 30px;
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .step-line {
+    width: 1px; flex: 1;
+    background: var(--border);
+    margin: 4px 0;
+    min-height: 16px;
+  }
+
+  .step:last-child .step-line { display: none; }
+
+  .step-body {
+    padding: 4px 0 2rem;
+    flex: 1;
+  }
+
+  .step-body h3 {
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 0.4rem;
+  }
+
+  .step-body p {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 0;
+  }
+
+  /* NEXT POSTS */
+  .next-posts {
+    border-top: 1px solid var(--border);
+    margin-top: 3rem;
+    padding-top: 2rem;
+  }
+
+  .next-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 1.25rem;
+  }
+
+  .next-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .next-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: border-color 0.15s;
+  }
+
+  .next-card:hover { border-color: var(--accent-dim); text-decoration: none; }
+
+  .next-card .nc-cat {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+
+  .next-card .nc-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.35;
+  }
+
+  .next-card .nc-status {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* MOBILE */
+  @media (max-width: 900px) {
+    .page-wrap { grid-template-columns: 1fr; padding: 0; }
+    .toc-col { display: none; }
+    .article-col { grid-column: 1; padding: 2rem 1.25rem; }
+    .next-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="index.html" class="nav-logo">
+    <div class="logo-mark">🖥</div>
+    HomeLab Guides
+  </a>
+  <a href="index.html" class="nav-back">← All guides</a>
+</nav>
+
+<div class="page-wrap">
+
+  <!-- ARTICLE -->
+  <article class="article-col">
+
+    <div class="article-eyebrow">Jellyfin · NVIDIA · 4K</div>
+    <h1 class="article-title">How to Set Up Jellyfin with NVIDIA GPU Transcoding (GTX 1070 — Fix AV1 Errors)</h1>
+
+    <div class="article-meta">
+      <span class="meta-item">📅 June 2026</span>
+      <span class="meta-item">⏱ ~10 min read</span>
+      <span class="meta-item">OS: Windows 11</span>
+      <span class="tag">Jellyfin</span>
+      <span class="tag">NVENC</span>
+      <span class="tag">GTX 1070</span>
+      <span class="tag">4K UHD</span>
+    </div>
+
+    <div class="prose">
+
+      <p>
+        If you've set up Jellyfin with an NVIDIA GTX 1070 (or similar older GPU) and your 4K streams are stuttering or failing, there's a good chance Jellyfin is trying to transcode to AV1 — which the GTX 1070 can't do. This guide walks through the full setup: ripping 4K Blu-rays with MakeMKV, flashing your ASUS drive for UHD support, and configuring Jellyfin's NVENC settings so it actually uses the GPU.
+      </p>
+
+      <div class="callout error">
+        <span class="callout-icon">🚫</span>
+        <div><strong>The problem:</strong> Jellyfin defaults to AV1 encoding. AV1 NVENC requires an RTX 4000 series GPU or newer. The GTX 1070 only supports H264 and HEVC via NVENC — if you don't disable AV1, transcoding will fail or fall back to slow software encoding.</div>
+      </div>
+      </div>
+
+      <!-- HARDWARE -->
+      <h2 id="hardware">Hardware used in this build</h2>
+
+      <p>This is the server I'm running. The GTX 1070 handles all Jellyfin transcoding. The GTX 960 is used by a separate application and isn't touched by Jellyfin at all.</p>
+
+      <table class="spec-table">
+        <thead>
+          <tr><th>Component</th><th>Spec</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>CPU</td><td>AMD Ryzen 5 3600X</td><td>Not used for transcoding</td></tr>
+          <tr><td>RAM</td><td>8 GB DDR4 2400 MHz</td><td></td></tr>
+          <tr><td>GPU (Jellyfin)</td><td>NVIDIA GTX 1070</td><td>NVENC transcode GPU</td></tr>
+          <tr><td>GPU (other)</td><td>NVIDIA GTX 960</td><td>Not used by Jellyfin</td></tr>
+          <tr><td>Storage</td><td>M.2 NVMe SSD</td><td>OS drive</td></tr>
+          <tr><td>Library</td><td>UNAS Pro NAS</td><td>Media stored here</td></tr>
+          <tr><td>OS</td><td>Windows 11</td><td></td></tr>
+          <tr><td>Blu-ray Drive</td><td>ASUS BW-16D1X-U</td><td>External USB, flashed for 4K</td></tr>
+          <tr><td>ISP</td><td>Spectrum Fiber</td><td>1 Gbps up/down ethernet</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <div>The original server was a Dell Optiplex 7050 MFF with an i5-6500T. It ran Jellyfin fine for 1080p but couldn't handle 4K UHD transcoding — the CPU was just too constrained. If your server is struggling, a mid-range GPU makes a huge difference.</div>
+      </div>
+
+      <!-- MAKEMKV -->
+      <h2 id="makemkv">Ripping 4K Blu-rays with MakeMKV</h2>
+
+      <p>Before you can stream anything, you need to rip your discs to MKV files. The ASUS BW-16D1X-U can rip standard Blu-rays out of the box, but 4K UHD requires a firmware flash first.</p>
+
+      <h3 id="firmware">Flashing the ASUS drive for 4K UHD</h3>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-left"><div class="step-num">1</div><div class="step-line"></div></div>
+          <div class="step-body">
+            <h3>Download the tools</h3>
+            <p>From the MakeMKV forum, download MakeMKV, the <strong>SFD Tool</strong>, and the <strong>"All You Need" firmware pack</strong>. All three are needed.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-left"><div class="step-num">2</div><div class="step-line"></div></div>
+          <div class="step-body">
+            <h3>Flash the firmware (Windows only)</h3>
+            <p>Use SFD Tool to flash <code>ASUS-BW-16D1HT-3.10-WM01601.bin</code> onto the drive. The SFD Tool is a <code>.exe</code> — this step is confirmed on Windows. Mac and Linux may work but are untested.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-left"><div class="step-num">3</div><div class="step-line"></div></div>
+          <div class="step-body">
+            <h3>Rip with MakeMKV</h3>
+            <p>After flashing, insert a 4K UHD disc and open MakeMKV. It should detect the disc and let you rip it to MKV. Without the flash, only standard 1080p Blu-rays will work.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <span class="callout-icon">⚠️</span>
+        <div>If you don't need 4K UHD, skip the firmware flash entirely. The drive works perfectly for 1080p Blu-ray ripping with no modifications.</div>
+      </div>
+      </div>
+
+      <!-- NVENC SETUP -->
+      <h2 id="nvenc">Configuring Jellyfin NVENC transcoding</h2>
+
+      <p>
+        This is where most people get stuck. Jellyfin's default settings will try AV1 encoding, which doesn't work on the GTX 1070. Here's exactly what to set.
+      </p>
+
+      <p>Go to <strong>Jellyfin Dashboard → Admin → Playback → Transcoding</strong> and apply the following:</p>
+
+      <h3>Hardware acceleration</h3>
+      <p>Set <strong>Hardware Acceleration</strong> to <code>Nvidia NVENC</code>. You'll see a note that additional configuration is required — that's fine, we're handling it below.</p>
+
+      <h3>Hardware decoding — enable everything except AV1</h3>
+
+      <table class="spec-table">
+        <thead>
+          <tr><th>Codec</th><th>Enable?</th><th>Why</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>H264</td><td><span class="check">✔ On</span></td><td>Standard HD content</td></tr>
+          <tr><td>HEVC</td><td><span class="check">✔ On</span></td><td>4K HDR content</td></tr>
+          <tr><td>MPEG2, MPEG4, VC1</td><td><span class="check">✔ On</span></td><td>Older disc formats</td></tr>
+          <tr><td>VP8, VP9</td><td><span class="check">✔ On</span></td><td>Web video</td></tr>
+          <tr><td><strong>AV1</strong></td><td><span class="cross">✘ OFF</span></td><td><strong>GTX 1070 cannot decode AV1 via NVDEC</strong></td></tr>
+          <tr><td>HEVC 10-bit</td><td><span class="check">✔ On</span></td><td>HDR10 / Dolby Vision</td></tr>
+          <tr><td>VP9 10-bit</td><td><span class="check">✔ On</span></td><td></td></tr>
+          <tr><td>HEVC RExt 8/10-bit</td><td><span class="check">✔ On</span></td><td></td></tr>
+          <tr><td>HEVC RExt 12-bit</td><td><span class="check">✔ On</span></td><td></td></tr>
+          <tr><td>Enhanced NVDEC</td><td><span class="check">✔ On</span></td><td>Disable if you get decoding errors</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Encoding format options</h3>
+
+      <table class="spec-table">
+        <thead>
+          <tr><th>Option</th><th>Set to</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Enable hardware encoding</td><td><span class="check">✔ On</span></td></tr>
+          <tr><td>Allow encoding in HEVC format</td><td><span class="check">✔ On</span></td></tr>
+          <tr><td><strong>Allow encoding in AV1 format</strong></td><td><span class="cross">✘ OFF — critical</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout success">
+        <span class="callout-icon">✅</span>
+        <div>Save the settings. If everything's correct, when you play a 4K file that needs transcoding, Task Manager will show the GTX 1070 with active <strong>Video Encode</strong> and <strong>Video Decode</strong> usage. The Jellyfin dashboard will show something like: <code>135fps · 39.9 Mbps · MP4 HEVC AAC</code>.</div>
+      </div>
+
+      <!-- CLIENTS -->
+      <h2 id="clients">Client compatibility</h2>
+
+      <p>Not all Jellyfin clients behave the same way when it comes to transcoding.</p>
+
+      <h3>Sony TV (Android TV) — Direct Play</h3>
+      <p>
+        Install the Jellyfin app from the Google Play Store on your Sony TV. Enter your server's IP address, log in, and your library appears. If the TV and server are on the same network or VLAN, the TV may auto-detect the server. When the TV is connected via ethernet, 4K UHD files play as <strong>Direct Play</strong> — the raw file streams directly with zero transcoding, which is the ideal scenario.
+      </p>
+
+      <h3>Windows browser or app — NVENC transcoding</h3>
+      <p>
+        Windows clients hit the server and trigger GPU transcoding when the video format or bitrate exceeds what the client can handle directly. With NVENC configured correctly, the GTX 1070 handles it cleanly.
+      </p>
+
+      <h3>macOS — no NVIDIA support</h3>
+      <div class="callout warn">
+        <span class="callout-icon">⚠️</span>
+        <div>
+          <strong>NVIDIA NVENC transcoding does not work on macOS.</strong> This is an OS-level limitation — Apple dropped NVIDIA support years ago. If you're using a web browser or the Jellyfin Mac app on a Mac, it will not use your server's GPU. It falls back to local hardware decode using Apple's own video engine instead. The transcoding still happens, it just doesn't use your GTX 1070.
+        </div>
+      </div>
+
+      <!-- TROUBLESHOOTING -->
+      <h2 id="troubleshoot">Troubleshooting</h2>
+
+      <h3>GPU isn't being used — still on CPU</h3>
+      <p>Check that AV1 encoding is disabled (both in hardware decoding list and encoding format options). Also confirm the NVIDIA drivers are up to date. Open Task Manager → Performance → GPU 1 and watch the Video Encode/Decode graphs while playing something that requires transcoding.</p>
+
+      <h3>Getting decoding errors</h3>
+      <p>If you see errors in the Jellyfin log related to decoding, try disabling <strong>Enhanced NVDEC decoder</strong> in the transcoding settings. This switches to CUVID instead, which is more compatible on some driver versions.</p>
+
+      <h3>Transcoding reason: "video's bitrate exceeds the limit"</h3>
+      <p>This is normal — it means the file's native bitrate is higher than the client's playback limit, so Jellyfin is re-encoding it at a lower bitrate. As long as the GPU is doing the work, this is fine.</p>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <div>If you want AV1 support in the future, you'll need an RTX 4000 series card or newer. The GTX 1070 tops out at HEVC (H.265) encoding via NVENC.</div>
+      </div>
+      </div>
+
+    </div><!-- /prose -->
+
+    <!-- NEXT POSTS -->
+    <div class="next-posts">
+      <div class="next-label">More guides</div>
+      <div class="next-grid">
+        <a href="index.html" class="next-card">
+          <span class="nc-cat">Blu-ray Ripping</span>
+          <span class="nc-title">MakeMKV 4K UHD: ASUS Drive Firmware Flash Guide</span>
+          <span class="nc-status">Coming soon</span>
+        </a>
+        <a href="index.html" class="next-card">
+          <span class="nc-cat">Clients</span>
+          <span class="nc-title">Jellyfin on Sony Android TV: Direct Play vs Transcoding</span>
+          <span class="nc-status">Coming soon</span>
+        </a>
+      </div>
+    </div>
+
+  </article>
+
+  <!-- TOC SIDEBAR -->
+  <aside class="toc-col">
+    <div class="toc-label">On this page</div>
+    <ul class="toc-list">
+      <li><a href="#hardware">Hardware</a></li>
+      <li><a href="#makemkv">MakeMKV ripping</a></li>
+      <li><a href="#firmware">Drive firmware flash</a></li>
+      <li><a href="#nvenc">NVENC config</a></li>
+      <li><a href="#clients">Client compatibility</a></li>
+      <li><a href="#troubleshoot">Troubleshooting</a></li>
+    </ul>
+  </aside>
+
+</div>
+
+<script>
+  // Highlight active TOC item on scroll
+  const headings = document.querySelectorAll('.prose h2[id], .prose h3[id]');
+  const tocLinks = document.querySelectorAll('.toc-list a');
+
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        tocLinks.forEach(l => {
+          l.classList.remove('active');
+          if (l.getAttribute('href') === '#' + e.target.id) l.classList.add('active');
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  headings.forEach(h => obs.observe(h));
+</script>
+
+</body>
+</html>

@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- SEO META -->
+<title>HomeLab Guides — Self-Hosted Media, NAS, and Home Server Tutorials</title>
+<meta name="description" content="Step-by-step guides for setting up Jellyfin, MakeMKV, NVIDIA transcoding, NAS storage, and more. Real builds, real problems, real fixes.">
+<meta name="keywords" content="jellyfin setup, makemkv 4k uhd, nvidia transcoding jellyfin, home server guide, self-hosted media server, homelab">
+<link rel="canonical" href="https://homelabguides.com/">
+
+<!-- Open Graph -->
+<meta property="og:title" content="HomeLab Guides">
+<meta property="og:description" content="Step-by-step guides for self-hosted media servers, NAS, and home lab builds.">
+<meta property="og:type" content="website">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg:        #0b0f14;
+    --surface:   #131820;
+    --surface2:  #1a2030;
+    --border:    #1e2736;
+    --accent:    #4f9eff;
+    --accent-dim:#1a3a6b;
+    --green:     #3dd68c;
+    --orange:    #f0883e;
+    --muted:     #6b7a99;
+    --text:      #dce5f5;
+    --text-dim:  #a8b5d1;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'Space Grotesk', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-dim);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  /* ── NAV ── */
+  nav {
+    border-bottom: 1px solid var(--border);
+    padding: 0 clamp(1.25rem, 5vw, 4rem);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    background: rgba(11,15,20,0.95);
+    backdrop-filter: blur(10px);
+    z-index: 100;
+  }
+
+  .nav-logo {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-logo .logo-mark {
+    width: 26px; height: 26px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-size: 13.5px;
+    color: var(--muted);
+    transition: color 0.15s;
+    font-weight: 500;
+  }
+
+  .nav-links a:hover { color: var(--text); }
+
+  /* ── HERO ── */
+  .hero {
+    padding: clamp(3rem, 8vw, 6rem) clamp(1.25rem, 5vw, 4rem) clamp(2.5rem, 6vw, 4rem);
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2rem;
+    align-items: center;
+  }
+
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .hero-eyebrow::before {
+    content: '';
+    display: block;
+    width: 24px; height: 1px;
+    background: var(--accent);
+  }
+
+  .hero h1 {
+    font-family: var(--sans);
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.25rem;
+  }
+
+  .hero h1 em {
+    font-style: normal;
+    color: var(--accent);
+  }
+
+  .hero-desc {
+    font-size: 16px;
+    color: var(--text-dim);
+    max-width: 520px;
+    line-height: 1.7;
+    margin-bottom: 2rem;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 2rem;
+  }
+
+  .stat { }
+  .stat-num {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  .hero-visual {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    opacity: 0.7;
+  }
+
+  .terminal-line {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .terminal-line .prompt { color: var(--green); }
+  .terminal-line .cmd { color: var(--text); }
+  .terminal-line .out { color: var(--muted); padding-left: 1.1rem; }
+  /* ── POSTS ── */
+  .posts-section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 clamp(1.25rem, 5vw, 4rem) 5rem;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Featured post */
+  .featured-post {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1.5rem;
+    align-items: start;
+    transition: border-color 0.2s;
+    cursor: pointer;
+  }
+
+  .featured-post:hover { border-color: var(--accent-dim); }
+
+  .featured-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    background: var(--accent-dim);
+    padding: 2px 8px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-bottom: 0.75rem;
+  }
+
+  .featured-post h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  .featured-post .excerpt {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+
+  .post-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .post-meta .date {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--surface2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+
+  .read-link {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 1rem;
+    white-space: nowrap;
+  }
+
+  .featured-post-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .difficulty {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+
+  .difficulty.medium { color: var(--orange); border-color: var(--orange); }
+  .difficulty.easy { color: var(--green); border-color: var(--green); }
+
+  .read-time {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* Post grid */
+  .post-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  .post-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.35rem;
+    transition: border-color 0.2s, transform 0.15s;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .post-card:hover {
+    border-color: var(--border);
+    transform: translateY(-2px);
+  }
+
+  .post-card .card-category {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 0.6rem;
+  }
+
+  .post-card h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.35;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  .post-card .card-excerpt {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.55;
+    flex: 1;
+    margin-bottom: 1rem;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .card-footer .date {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .coming-soon {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 1.75rem clamp(1.25rem, 5vw, 4rem);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  footer p {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+
+  footer .footer-links {
+    display: flex;
+    gap: 1.25rem;
+    list-style: none;
+  }
+
+  footer .footer-links a {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    transition: color 0.15s;
+  }
+
+  footer .footer-links a:hover { color: var(--text); }
+
+  /* ── MOBILE ── */
+  @media (max-width: 640px) {
+    .hero { grid-template-columns: 1fr; }
+    .hero-visual { display: none; }
+    .hero-stats { gap: 1.25rem; }
+    .featured-post { grid-template-columns: 1fr; }
+    .featured-post-right { align-items: flex-start; flex-direction: row; }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="index.html" class="nav-logo">
+    <div class="logo-mark">🖥</div>
+    HomeLab Guides
+  </a>
+  <ul class="nav-links">
+    <li><a href="#guides">Guides</a></li>
+    <li><a href="#about">About</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div>
+    <div class="hero-eyebrow">Self-hosted. Actually documented.</div>
+    <h1>Guides for people<br>who run their own <em>servers.</em></h1>
+    <p class="hero-desc">
+      Real step-by-step tutorials for Jellyfin, MakeMKV, NAS setups, and GPU transcoding — written from actual builds, not YouTube thumbnails.
+    </p>
+    <div class="hero-stats">
+      <div class="stat">
+        <div class="stat-num">1</div>
+        <div class="stat-label">Guide published</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">4K</div>
+        <div class="stat-label">UHD capable</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">0</div>
+        <div class="stat-label">Vague answers</div>
+      </div>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <div class="terminal-line"><span class="prompt">$</span> <span class="cmd">ffmpeg -hwaccel nvdec -c:v hevc</span></div>
+    <div class="terminal-line out">Stream #0:0: Video: hevc (Main 10)</div>
+    <div class="terminal-line out">hwaccel: nvdec, device: cuda:0</div>
+    <div class="terminal-line"><span class="prompt">$</span> <span class="cmd">jellyfin --transcode gpu</span></div>
+    <div class="terminal-line out">GTX 1070 · NVENC · 135fps ✓</div>
+    <div class="terminal-line"><span class="prompt">$</span> <span class="cmd">_</span></div>
+  </div>
+</section>
+</div>
+
+<!-- POSTS -->
+<section class="posts-section" id="guides">
+  <div class="section-label">Latest guides</div>
+
+  <!-- FEATURED (live) -->
+  <a href="jellyfin-nvidia-transcoding.html" style="display:block;">
+    <article class="featured-post">
+      <div>
+        <span class="featured-badge">● Live</span>
+        <h2>How to Set Up Jellyfin with NVIDIA GPU Transcoding (GTX 1070 / No AV1)</h2>
+        <p class="excerpt">
+          The GTX 1070 can handle 4K HEVC transcoding — but Jellyfin defaults to AV1, which breaks it. Here's exactly how to rip 4K UHD Blu-rays with MakeMKV, flash your ASUS drive, and configure NVENC so your server actually uses the GPU.
+        </p>
+        <div class="post-meta">
+          <span class="date">June 2026</span>
+          <span class="tag">Jellyfin</span>
+          <span class="tag">NVIDIA</span>
+          <span class="tag">4K UHD</span>
+          <span class="tag">MakeMKV</span>
+        </div>
+        <div class="read-link">Read guide →</div>
+      </div>
+      <div class="featured-post-right">
+        <span class="difficulty medium">Intermediate</span>
+        <span class="read-time">~10 min read</span>
+      </div>
+    </article>
+  </a>
+
+  <!-- GRID (coming soon stubs — SEO seed pages) -->
+  <div class="section-label" style="margin-top:2.5rem;">Coming soon</div>
+  <div class="post-grid">
+
+    <article class="post-card">
+      <div class="card-category">Blu-ray Ripping</div>
+      <h3>MakeMKV 4K UHD Setup: ASUS BW-16D1X-U Firmware Flash Guide</h3>
+      <p class="card-excerpt">Full walkthrough for flashing the ASUS external Blu-ray drive to unlock 4K UHD ripping on Windows.</p>
+      <div class="card-footer">
+        <span class="date">Coming soon</span>
+        <span class="coming-soon">In progress</span>
+      </div>
+    </article>
+
+    <article class="post-card">
+      <div class="card-category">NAS & Storage</div>
+      <h3>UNAS Pro Setup: Connecting Your NAS to a Jellyfin Server</h3>
+      <p class="card-excerpt">How to mount network shares from a UNAS Pro so Jellyfin can read your media library without copying files.</p>
+      <div class="card-footer">
+        <span class="date">Coming soon</span>
+        <span class="coming-soon">In progress</span>
+      </div>
+    </article>
+
+    <article class="post-card">
+      <div class="card-category">Clients</div>
+      <h3>Jellyfin on Sony Android TV: Direct Play vs Transcoding Explained</h3>
+      <p class="card-excerpt">Why your Sony TV direct plays 4K while your laptop transcodes — and how to keep it that way.</p>
+      <div class="card-footer">
+        <span class="date">Coming soon</span>
+        <span class="coming-soon">Planned</span>
+      </div>
+    </article>
+
+    <article class="post-card">
+      <div class="card-category">Transcoding</div>
+      <h3>Why Jellyfin Won't Use Your GPU on macOS (And What To Do Instead)</h3>
+      <p class="card-excerpt">NVIDIA NVENC doesn't work on macOS — here's why, and how Mac clients fall back to local hardware decode.</p>
+      <div class="card-footer">
+        <span class="date">Coming soon</span>
+        <span class="coming-soon">Planned</span>
+      </div>
+    </article>
+
+    <article class="post-card">
+      <div class="card-category">Hardware</div>
+      <h3>Building a Budget Jellyfin Server: AMD 3600X + GTX 1070</h3>
+      <p class="card-excerpt">How to repurpose old PC parts into a capable 4K media server that handles multiple simultaneous streams.</p>
+      <div class="card-footer">
+        <span class="date">Coming soon</span>
+        <span class="coming-soon">Planned</span>
+      </div>
+    </article>
+
+    <article class="post-card">
+      <div class="card-category">Networking</div>
+      <h3>Jellyfin VLAN Setup: Isolating Your Media Server from the Rest of the Network</h3>
+      <p class="card-excerpt">How to put your Jellyfin server and NAS on a dedicated VLAN while still allowing client access.</p>
+      <div class="card-footer">
+        <span class="date">Coming soon</span>
+        <span class="coming-soon">Planned</span>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer id="about">
+  <p>© 2026 HomeLab Guides · Built from real hardware, real problems.</p>
+  <ul class="footer-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="#guides">Guides</a></li>
+  </ul>
+</footer>
+
+</body>
+</html>
